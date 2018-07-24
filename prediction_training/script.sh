@@ -1,0 +1,10 @@
+python main.py --i log.wordcount.csv --l log.wordcount.labeled.csv --o keras.wordcount
+python main.py --i log.sort.csv --l log.sort.labeled.csv --o keras.sort
+python main.py --i log.terasort.csv --l log.terasort.labeled.csv --o keras.terasort
+python main.py --i log.invertedindex.csv --l log.invertedindex.labeled.csv --o keras.invertedindex
+python main.py --i log.kmeans_classification.csv --l log.kmeans_classification.labeled.csv --o keras.kmeans_classification
+python main.py --i log.kmeans_iterator.csv --l log.kmeans_iterator.labeled.csv --o keras.kmeans_iterator
+python main.py --i log.pagerank_stage1.csv --l log.pagerank_stage1.labeled.csv --o keras.pagerank_stage1
+python main.py --i log.pagerank_stage2.csv --l log.pagerank_stage2.labeled.csv --o keras.pagerank_stage2
+python main.py --i log.trianglecount_triads.csv --l log.trianglecount_triads.labeled.csv --o keras.trianglecount_triads
+python main.py --i log.trianglecount_triangles.csv --l log.trianglecount_triangles.labeled.csv --o keras.trianglecount_triangles

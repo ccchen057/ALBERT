@@ -1,0 +1,143 @@
+17/05/27 16:09:49 INFO HiBench.PagerankData: Generating pageRank data files...
+17/05/27 16:09:49 INFO HiBench.PagerankData: Initializing PageRank data generator...
+17/05/27 16:09:50 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+curIndex: 129, total: 130
+17/05/27 16:09:51 INFO HiBench.Dummy: Creating dummy file hdfs://hdfs:9000/Classify/HiBench/Pagerank/temp/dummy with 8 slots...
+17/05/27 16:09:51 INFO HiBench.PagerankData: Creating PageRank nodes...
+17/05/27 16:09:51 INFO HiBench.PagerankData: Running Job: Create pagerank nodes
+17/05/27 16:09:51 INFO HiBench.PagerankData: Dummy file hdfs://hdfs:9000/Classify/HiBench/Pagerank/temp/dummy as input
+17/05/27 16:09:51 INFO HiBench.PagerankData: Vertices file hdfs://hdfs:9000/Classify/HiBench/Pagerank/Input/vertices as output
+17/05/27 16:09:52 INFO client.RMProxy: Connecting to ResourceManager at large-m-m-0/192.168.100.36:8032
+17/05/27 16:09:52 INFO client.RMProxy: Connecting to ResourceManager at large-m-m-0/192.168.100.36:8032
+17/05/27 16:09:52 WARN mapreduce.JobResourceUploader: Hadoop command-line option parsing not performed. Implement the Tool interface and execute your application with ToolRunner to remedy this.
+17/05/27 16:09:53 INFO mapred.FileInputFormat: Total input paths to process : 1
+17/05/27 16:09:53 INFO mapreduce.JobSubmitter: number of splits:8
+17/05/27 16:09:53 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1492752234356_14827
+17/05/27 16:09:53 INFO impl.YarnClientImpl: Submitted application application_1492752234356_14827
+17/05/27 16:09:53 INFO mapreduce.Job: The url to track the job: http://large-m-m-0:8088/proxy/application_1492752234356_14827/
+17/05/27 16:09:53 INFO mapreduce.Job: Running job: job_1492752234356_14827
+17/05/27 16:09:59 INFO mapreduce.Job: Job job_1492752234356_14827 running in uber mode : false
+17/05/27 16:09:59 INFO mapreduce.Job:  map 0% reduce 0%
+17/05/27 16:10:04 INFO mapreduce.Job:  map 13% reduce 0%
+17/05/27 16:10:05 INFO mapreduce.Job:  map 75% reduce 0%
+17/05/27 16:10:06 INFO mapreduce.Job:  map 100% reduce 0%
+17/05/27 16:10:09 INFO mapreduce.Job:  map 100% reduce 25%
+17/05/27 16:10:10 INFO mapreduce.Job:  map 100% reduce 88%
+17/05/27 16:10:11 INFO mapreduce.Job:  map 100% reduce 100%
+17/05/27 16:10:17 INFO mapreduce.Job: Job job_1492752234356_14827 completed successfully
+17/05/27 16:10:17 INFO mapreduce.Job: Counters: 49
+	File System Counters
+		FILE: Number of bytes read=128
+		FILE: Number of bytes written=1898200
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=919
+		HDFS: Number of bytes written=16
+		HDFS: Number of read operations=48
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=16
+	Job Counters
+		Launched map tasks=8
+		Launched reduce tasks=8
+		Other local map tasks=8
+		Total time spent by all maps in occupied slots (ms)=23019
+		Total time spent by all reduces in occupied slots (ms)=48436
+		Total time spent by all map tasks (ms)=23019
+		Total time spent by all reduce tasks (ms)=24218
+		Total vcore-seconds taken by all map tasks=23019
+		Total vcore-seconds taken by all reduce tasks=24218
+		Total megabyte-seconds taken by all map tasks=11785728
+		Total megabyte-seconds taken by all reduce tasks=24799232
+	Map-Reduce Framework
+		Map input records=8
+		Map output records=8
+		Map output bytes=64
+		Map output materialized bytes=464
+		Input split bytes=840
+		Combine input records=0
+		Combine output records=0
+		Reduce input groups=8
+		Reduce shuffle bytes=464
+		Reduce input records=0
+		Reduce output records=8
+		Spilled Records=16
+		Shuffled Maps =64
+		Failed Shuffles=0
+		Merged Map outputs=64
+		GC time elapsed (ms)=596
+		CPU time spent (ms)=10710
+		Physical memory (bytes) snapshot=4619984896
+		Virtual memory (bytes) snapshot=20593909760
+		Total committed heap usage (bytes)=4722786304
+	Shuffle Errors
+		BAD_ID=0
+		CONNECTION=0
+		IO_ERROR=0
+		WRONG_LENGTH=0
+		WRONG_MAP=0
+		WRONG_REDUCE=0
+	File Input Format Counters
+		Bytes Read=79
+	File Output Format Counters
+		Bytes Written=16
+17/05/27 16:10:17 INFO HiBench.PagerankData: Finished Running Job: Create pagerank nodes
+17/05/27 16:10:17 INFO HiBench.PagerankData: Creating PageRank links
+17/05/27 16:10:17 INFO HiBench.PagerankData: Running Job: Create pagerank links
+17/05/27 16:10:17 INFO HiBench.PagerankData: Dummy file hdfs://hdfs:9000/Classify/HiBench/Pagerank/temp/dummy as input
+17/05/27 16:10:17 INFO HiBench.PagerankData: Edges file hdfs://hdfs:9000/Classify/HiBench/Pagerank/Input/edges as output
+17/05/27 16:10:17 INFO client.RMProxy: Connecting to ResourceManager at large-m-m-0/192.168.100.36:8032
+17/05/27 16:10:17 INFO client.RMProxy: Connecting to ResourceManager at large-m-m-0/192.168.100.36:8032
+17/05/27 16:10:17 WARN mapreduce.JobResourceUploader: Hadoop command-line option parsing not performed. Implement the Tool interface and execute your application with ToolRunner to remedy this.
+17/05/27 16:10:19 INFO mapred.FileInputFormat: Total input paths to process : 1
+17/05/27 16:10:21 INFO mapreduce.JobSubmitter: number of splits:8
+17/05/27 16:10:22 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1492752234356_14828
+17/05/27 16:10:22 INFO impl.YarnClientImpl: Submitted application application_1492752234356_14828
+17/05/27 16:10:22 INFO mapreduce.Job: The url to track the job: http://large-m-m-0:8088/proxy/application_1492752234356_14828/
+17/05/27 16:10:22 INFO mapreduce.Job: Running job: job_1492752234356_14828
+17/05/27 16:10:27 INFO mapreduce.Job: Job job_1492752234356_14828 running in uber mode : false
+17/05/27 16:10:27 INFO mapreduce.Job:  map 0% reduce 0%
+17/05/27 16:10:33 INFO mapreduce.Job:  map 75% reduce 0%
+17/05/27 16:10:34 INFO mapreduce.Job:  map 88% reduce 0%
+17/05/27 16:10:35 INFO mapreduce.Job:  map 100% reduce 0%
+17/05/27 16:10:35 INFO mapreduce.Job: Job job_1492752234356_14828 completed successfully
+17/05/27 16:10:35 INFO mapreduce.Job: Counters: 31
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=952128
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=919
+		HDFS: Number of bytes written=1811175
+		HDFS: Number of read operations=40
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=16
+	Job Counters
+		Launched map tasks=8
+		Other local map tasks=8
+		Total time spent by all maps in occupied slots (ms)=25284
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=25284
+		Total vcore-seconds taken by all map tasks=25284
+		Total megabyte-seconds taken by all map tasks=12945408
+	Map-Reduce Framework
+		Map input records=8
+		Map output records=197135
+		Input split bytes=840
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=319
+		CPU time spent (ms)=8450
+		Physical memory (bytes) snapshot=1559171072
+		Virtual memory (bytes) snapshot=8546721792
+		Total committed heap usage (bytes)=1916796928
+	HiBench.Counters
+		BYTES_DATA_GENERATED=2249328
+	File Input Format Counters
+		Bytes Read=79
+	File Output Format Counters
+		Bytes Written=1811175
+17/05/27 16:10:35 INFO HiBench.PagerankData: Finished Running Job: Create pagerank links
+17/05/27 16:10:35 INFO HiBench.PagerankData: Closing pagerank data generator...

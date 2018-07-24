@@ -1,0 +1,3 @@
+-Dmapreduce.job.reduces=6
+-Dmapreduce.tasktracker.map.tasks.maximum=18
+-Dmapreduce.tasktracker.reduce.tasks.maximum=12

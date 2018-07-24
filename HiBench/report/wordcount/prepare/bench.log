@@ -1,0 +1,58 @@
+17/05/27 15:29:05 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+17/05/27 15:29:05 INFO client.RMProxy: Connecting to ResourceManager at large-m-m-0/192.168.100.36:8032
+Running 8 maps.
+Job started: Sat May 27 15:29:06 UTC 2017
+17/05/27 15:29:06 INFO client.RMProxy: Connecting to ResourceManager at large-m-m-0/192.168.100.36:8032
+17/05/27 15:29:07 INFO mapreduce.JobSubmitter: number of splits:8
+17/05/27 15:29:07 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1492752234356_14793
+17/05/27 15:29:07 INFO impl.YarnClientImpl: Submitted application application_1492752234356_14793
+17/05/27 15:29:07 INFO mapreduce.Job: The url to track the job: http://large-m-m-0:8088/proxy/application_1492752234356_14793/
+17/05/27 15:29:07 INFO mapreduce.Job: Running job: job_1492752234356_14793
+17/05/27 15:29:12 INFO mapreduce.Job: Job job_1492752234356_14793 running in uber mode : false
+17/05/27 15:29:12 INFO mapreduce.Job:  map 0% reduce 0%
+17/05/27 15:29:46 INFO mapreduce.Job:  map 13% reduce 0%
+17/05/27 15:29:47 INFO mapreduce.Job:  map 38% reduce 0%
+17/05/27 15:29:48 INFO mapreduce.Job:  map 63% reduce 0%
+17/05/27 15:29:49 INFO mapreduce.Job:  map 100% reduce 0%
+17/05/27 15:29:49 INFO mapreduce.Job: Job job_1492752234356_14793 completed successfully
+17/05/27 15:29:49 INFO mapreduce.Job: Counters: 32
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=943520
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=1024
+		HDFS: Number of bytes written=3284935836
+		HDFS: Number of read operations=32
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=16
+	Job Counters
+		Launched map tasks=8
+		Other local map tasks=8
+		Total time spent by all maps in occupied slots (ms)=252940
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=252940
+		Total vcore-seconds taken by all map tasks=252940
+		Total megabyte-seconds taken by all map tasks=129505280
+	Map-Reduce Framework
+		Map input records=8
+		Map output records=4884992
+		Input split bytes=1024
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=2429
+		CPU time spent (ms)=107180
+		Physical memory (bytes) snapshot=1833361408
+		Virtual memory (bytes) snapshot=8506101760
+		Total committed heap usage (bytes)=1884815360
+	org.apache.hadoop.examples.RandomTextWriter$Counters
+		BYTES_WRITTEN=3200003239
+		RECORDS_WRITTEN=4884992
+	File Input Format Counters
+		Bytes Read=0
+	File Output Format Counters
+		Bytes Written=3284935836
+Job ended: Sat May 27 15:29:49 UTC 2017
+The job took 42 seconds.

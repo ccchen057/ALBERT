@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>System monitor report of HadoopWordcount</title>
+    <style TYPE="text/css">
+      .highcharts-tooltip>span {
+	background: rgba(255,255,255,0.85);
+	border: 1px solid silver;
+	border-radius: 3px;
+	box-shadow: 1px 1px 2px #888;
+	padding: 8px;
+	z-index: 2;
+      }
+    </style>
+    <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.2.min.js'></script>
+    <script src="http://code.highcharts.com/highcharts.js"></script>
+    <script src="http://code.highcharts.com/modules/data.js"></script>
+    <script src="http://code.highcharts.com/modules/heatmap.js"></script>
+    <script src="http://code.highcharts.com/modules/exporting.js"></script>
+
+    <script type='text/javascript'>
+    Object.defineProperty(Number.prototype,'fileSize',{value:function(a,b,c,d){
+	return (a=a?[1e3,'k','B']:[1024,'K','iB'],b=Math,c=b.log,
+		d=c(this)/c(a[0])|0,this/b.pow(a[0],d)).toFixed(2)
+	    +(d?(a[1]+'MGTPEZY')[--d]+a[2]:'Bytes');
+    },writable:false,enumerable:false});
+
+    function parse_events(){
+	var data = document.getElementById("csv_events").innerHTML;
+	var events=[];
+	var csv_header = [];
+	$.each(data.split('\n'), function(lineNo, line){
+	    var items = line.split(',');
+	    if (lineNo==0){
+		$.each(items, function(itemNo, item){
+		    csv_header.push(item);
+		});
+	    }else {
+		value = [];
+		$.each(items, function(itemNo, item){
+		    if (itemNo == 0){ // 0 -> timestamp
+			item = parseFloat(item);
+		    }
+//		    value[csv_header[itemNo]] = item;
+		    value.push(item);
+		});
+		events.push({color: 'red',
+			     dashStyle: 'longdashdot',
+			     value: value[0],
+			     label:{
+				 useHTML: true,
+				 text:value[1],
+				 align:'left'
+			     },
+			     width: 2});
+	    }
+	});
+	return events;
+    }
+
+function merge_options(obj1,obj2){
+    var obj3 = {};
+    for (var attrname in obj1) { obj3[attrname] = obj1[attrname]; }
+    for (var attrname in obj2) { obj3[attrname] = obj2[attrname]; }
+    return obj3;
+}
+
+function gen_overall_options(suffix, title, yAxis_desc, plot_options, plot_events, chart_type){
+    var data = document.getElementById("csv_"+suffix).innerHTML;
+    var csv_header = [];
+	
+    var series=[];
+    var yaxis=0;
+    $.each(data.split('\n'), function(lineNo, line){
+	var items = line.split(',');
+	if (lineNo==0){
+	    $.each(items, function(itemNo, item){
+		if (item[0]=='|'){ // new axis
+		    item = item.substring(1);
+		    yaxis +=1;
+		}
+		csv_header.push(item);
+		series.push({name:item, yAxis: yaxis, data:[],
+			     tooltip: yAxis_desc[yaxis].tooltip
+			    })
+	    });
+	} else {
+	    $.each(items, function(itemNo, item){
+		if (itemNo>0){
+		    series[itemNo].data.push([parseFloat(items[0]), parseFloat(item)])
+		}
+	    });
+	}
+    });
+    series.splice(0,1);
+    var options = {
+	chart: merge_options({
+	    renderTo: 'container_'+suffix,
+	},
+			     chart_type),
+	title: {
+	    text: title
+	},
+	// tooltip: {
+	// 	pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.percentage:.1f}%</b> ({point.y:,.0f})<br/>',
+        // shared: true
+        // },
+	
+	
+	plotOptions: plot_options,
+	
+	xAxis: {
+	    type: 'datetime',
+	    tickmarkPlacement: 'on',
+	    labels: {
+                align: 'left',
+                x: 5,
+                format: '{value:%M:%S}'
+	    },
+	    plotLines: plot_events,
+	    title: {
+                enabled: false
+	    }
+	},
+	yAxis: yAxis_desc,
+	series: series
+    };
+    //	console.log(options.series)
+
+    var newchart = new Highcharts.Chart(options);
+}
+
+function gen_heatmap_options(suffix, title, yAxis_desc, colorAxis_desc, series_desc){
+    
+    var data = document.getElementById("csv_"+suffix).innerHTML;
+    var csv_header = [];
+	
+    var series=[];
+    var yaxis=0;
+
+    var options = {
+	chart: {
+	    renderTo: 'container_'+suffix,
+	    type: 'heatmap',
+	    margin: [60, 10, 80, 70]
+	},
+	title: {
+	    text: title
+	},
+	tooltip: {
+	    backgroundColor: null,
+	    borderWidth: 0,
+	    distance: 10,
+	    shadow: false,
+	    useHTML: true,
+	    style: {
+                padding: 0,
+                color: 'black'
+	    }
+        },
+	xAxis: {
+	    type: 'datetime',
+	    labels: {
+                align: 'left',
+                x: 5,
+                format: '{value:%M:%S}'
+	    },
+	    showLastLabel: false,
+	    tickLength: 16
+	},
+	yAxis: yAxis_desc,
+	colorAxis: merge_options({
+	    stops: [
+                [0, '#3060cf'],
+                [0.5, '#fffbbc'],
+                [0.9, '#c4463a'],
+                [1, '#c4463a']
+	    ],
+	    startOnTick: false,
+	    endOnTick: false,
+	    labels: {
+                format: '{value}%'
+	    }
+	},
+				 colorAxis_desc),
+	series: [merge_options({
+	    name : 'CPU usage',
+	    borderWidth: 1,
+	    nullColor: '#EFEFEF',
+	    colsize: 5000.0, // 1s
+	    tooltip: {
+                headerFormat: 'CPU Usage<br/>',
+                pointFormat: '{point.x%Y-%m-%d %H:%M:%S}<br/>{point.hostname}.{point.coreid}<br/><b>{point.value:%.2f} %</b>'
+	    },
+	    turboThreshold: Number.MAX_VALUE,
+	    data: []
+	}, series_desc)]
+    };
+    
+    var data =  document.getElementById('csv_'+suffix).innerHTML;
+    // Split the lines
+    var lines = data.split('\n');
+    var csv_header = [];
+    var max_value = 0;
+    var min_value = -1;
+    $.each(lines, function(lineNo, line) {
+	var items = line.split(',');
+	    
+	// header line containes categories
+	if (lineNo == 0) {
+	    $.each(items, function(itemNo, item){
+		csv_header.push(item);
+	    });
+	} else { // the rest of the lines contain data with their name in the first position
+	    var series_data = {};
+	    $.each(items, function(itemNo, item) {
+		var value;
+		if (itemNo <= 2) {
+		    value = parseFloat(item);
+		    if (itemNo == 2){
+			if (max_value< value) max_value = value;		
+			if ((min_value<0) || ( min_value>value)) min_value = value;
+		    }
+		} else {
+		    value = item;
+		}
+		series_data[csv_header[itemNo]] = value;
+	    });
+	    options.series[0].data.push(series_data);
+	}
+    }  );
+    if (!("max" in colorAxis_desc)){
+	options.colorAxis.max = max_value;
+    }
+    if (!("min" in colorAxis_desc)){
+	options.colorAxis,min = min_value;
+    }
+
+
+    var newchart = new Highcharts.Chart(options);
+}
+
+    $(function() {
+
+	/**
+	 * This plugin extends Highcharts in two ways:
+	 * - Use HTML5 canvas instead of SVG for rendering of the heatmap squares. Canvas
+	 *   outperforms SVG when it comes to thousands of single shapes.
+	 * - Add a K-D-tree to find the nearest point on mouse move. Since we no longer have SVG shapes
+	 *   to capture mouseovers, we need another way of detecting hover points for the tooltip.
+	 */
+	(function (H) {
+            var wrap = H.wrap,
+            seriesTypes = H.seriesTypes;
+	    
+            /**
+             * Get the canvas context for a series
+             */
+            H.Series.prototype.getContext = function () {
+		var canvas;
+		if (!this.ctx) {
+                    canvas = document.createElement('canvas');
+                    canvas.setAttribute('width', this.chart.plotWidth);
+                    canvas.setAttribute('height', this.chart.plotHeight);
+                    canvas.style.position = 'absolute';
+                    canvas.style.left = this.group.translateX + 'px';
+                    canvas.style.top = this.group.translateY + 'px';
+                    canvas.style.zIndex = 0;
+                    canvas.style.cursor = 'crosshair';
+                    this.chart.container.appendChild(canvas);
+                    if (canvas.getContext) {
+			this.ctx = canvas.getContext('2d');
+                    }
+		}
+		return this.ctx;
+            }
+
+            /**
+             * Wrap the drawPoints method to draw the points in canvas instead of the slower SVG,
+             * that requires one shape each point.
+             */
+            H.wrap(H.seriesTypes.heatmap.prototype, 'drawPoints', function (proceed) {
+		
+		var ctx;
+		if (this.chart.renderer.forExport) {
+                    // Run SVG shapes
+                    proceed.call(this);
+		    
+		} else {
+		    
+                    if (ctx = this.getContext()) {
+			
+			// draw the columns
+			H.each(this.points, function (point) {
+                            var plotY = point.plotY,
+                            shapeArgs;
+			    
+                            if (plotY !== undefined && !isNaN(plotY) && point.y !== null) {
+				shapeArgs = point.shapeArgs;
+				pointAttr = (point.pointAttr && point.pointAttr['']) || point.series.pointAttribs(point);
+				
+				ctx.fillStyle = pointAttr.fill;
+				ctx.fillRect(shapeArgs.x, shapeArgs.y, shapeArgs.width, shapeArgs.height);
+                            }
+			});
+			
+                    } else {
+			this.chart.showLoading("Your browser doesn't support HTML5 canvas, <br>please use a modern browser");
+			
+			// Uncomment this to provide low-level (slow) support in oldIE. It will cause script errors on
+			// charts with more than a few thousand points.
+			//proceed.call(this);
+                    }
+		}
+            });
+	}(Highcharts));
+
+
+//	var chart_cpu_heatmap = new Highcharts.Chart(options);
+	var events = parse_events();
+
+	// generate heatmaps
+	// generate cpu heatmap
+	gen_heatmap_options("cpu_heatmap", "CPU usage heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function(){
+					return 'Core-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {min:0, max:100, labels:{format:'{value}%'}},
+			    {name : 'CPU Usage',
+			     tooltip:{
+				 headerFormat: 'CPU Usage<br/>',
+				 pointFormat: '{point.x:%Y-%m-%d %H:%M:%S}<br/>{point.hostname}.{point.coreid}<br/><b>{point.value:%.2f} %</b>'
+			     }});
+
+	// generate network throughputs heatmap
+	gen_heatmap_options("network_heatmap", "Network throughputs heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function(){
+					return  'Eth-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{format:'{value}'}},
+			    {name : 'Network throughputs',
+			     tooltip:{
+				 headerFormat: 'Network throughputs<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+"."+this.adapterid+'<br/><b>'+this.value.fileSize()+'</b>';}
+			     }}
+			    );
+
+	// generate disk io throughputs heatmap
+	gen_heatmap_options("diskio_heatmap", "Disk throughputs heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function (){
+					return 'Disk-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{format: '{value}'}},
+			    {name : 'DiskIO throughputs',
+			     tooltip:{
+				 headerFormat: 'DiskIO throughputs<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+"."+this.diskid+'<br/><b>'+this.value.fileSize()+'</b>';}
+			     }});
+
+	// generate memory usage heatmap
+	gen_heatmap_options("memory_heatmap", "Memory usage heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function () {
+					return 'Node-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{formatter: function (){ return this.value.fileSize();}}},
+			    {name : 'Memory Usage',
+			     tooltip:{
+				 headerFormat: 'Memory Usage<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+'<br/><b>'+this.value.fileSize()+'</b>';}
+			     }});
+
+	// generate proc numbers heatmap
+	gen_heatmap_options("procload_heatmap", "Process numbers heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function () {
+					return  'Node-'+ this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{format:'{value}'}},
+			    {name : 'Process(/Thread) numbers',
+			     tooltip:{
+				 headerFormat: 'Process numbers<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+'<br/><b>'+this.value+'</b>';}
+			     }}
+			   );
+	
+
+	// load cpu overall
+	gen_overall_options("cpu_overall", "Summarized CPU usage",
+			    [{	// yaxis
+				title: {
+				    text: 'Percent'
+				},
+				tooltip: {
+				    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.percentage:.1f}%</b>)<br/>',
+				},
+			    }], 
+			    {	// plot options
+				area: {
+				    stacking: 'percent',
+				    lineColor: '#ffffff',
+				    lineWidth: 1,
+				    marker: {
+					lineWidth: 1,
+					lineColor: '#ffffff'
+				    }
+				}
+			    },
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load network overall
+	gen_overall_options("network_overall", "Summarized Network throughputs & Packet-per-seconds", 
+			    [	// yaxis
+				{
+				    title:{
+					text: "Throughput Per Second"
+				    },
+				    tooltip: {
+					pointFormatter: function () {
+					    return '<span style="color:'+this.series.color+'">'+this.series.name+'</span>: <b>' + this.y.fileSize()+'</b>)<br/>';
+					}
+				    },
+				    labels: {
+					formatter: function() {
+					    return this.value.fileSize();
+					    }
+					}
+				},
+				{
+				    title:{
+					text: "Packets Per Second"
+				    },
+				    tooltip: {
+					pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.0f} packets</b>)<br/>',
+				    },
+				    opposite: true,
+				    reversed: true
+				},
+			    ],
+			    {},	// plot options
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load diskio overall
+	gen_overall_options("diskio_overall", "Summarized Disk throughputs & IOPS",
+			    [	// yaxis
+				{
+				    title:{
+					text: "Throughput Per Second"
+				    },
+				    tooltip: {
+					pointFormatter: function () {
+					    return '<span style="color:'+this.series.color +'">'+this.series.name+'</span>: <b>' + this.y.fileSize()+'</b>)<br/>';
+					},
+				    },
+				    labels: {
+					formatter: function() {
+					    return this.value.fileSize();
+					}
+				    }
+				},
+				{
+				    title:{
+					text: "Operations Per Second"
+				    },
+				    tooltip: {
+					pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.0f} IO</b>)<br/>',
+				    },
+				    opposite: true,
+				    reversed: true
+				}
+			    ],
+			    {},	// plot operations
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load memory overall
+	gen_overall_options("memory_overall", "Summarized Memory usage",
+			    [{	// yaxis
+				title: {
+				    text: 'Percent'
+				},
+				tooltip: {
+				    pointFormatter: function () {
+					return '<span style="color:'+this.series.color+'">'+this.series.name+'</span>: <b>' + (this.y*1024).fileSize()+'</b>)<br/>';
+				    }
+				},
+			    }], 
+			    {	// plot options
+				area: {
+				    stacking: 'percent',
+				    lineColor: '#ffffff',
+				    lineWidth: 1,
+				    marker: {
+					lineWidth: 1,
+					lineColor: '#ffffff'
+				    }
+				}
+			    },
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load procload overall
+	gen_overall_options("procload_overall", "Summarized system load",
+			    [{	// yaxis for loads
+				title: {
+				    text: 'load'
+				},
+				tooltip: {
+				    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:0.2f}</b>)<br/>',
+				},
+			    },
+			     {	// yaxis for running & total process
+				 title: {
+				     text: 'process number'
+				 },
+				 tooltip: {
+				     pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.0f}</b>)<br/>',
+				 },
+				 opposite: true,
+			    }], 
+			    {	// plot options
+			    },
+			    events,
+			     {	// chart type
+			    }
+			   );
+    });
+</script>
+</head>
+<body>
+    <h1>Workload: HadoopWordcount</h1>
+    
+    <div id="container_cpu_heatmap" style="height: 800px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_cpu_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    
+    <div id="container_network_heatmap" style="height: 800px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_network_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+
+    <div id="container_diskio_heatmap" style="height: 800px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_diskio_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    
+    <div id="container_memory_heatmap" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_memory_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+
+    <div id="container_procload_heatmap" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_procload_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+
+    <pre id="csv_cpu_heatmap" style="display: none">x,y,value,hostname,coreid
+1495991535000,0,0.401606425703,large-w-l-0.novalocal,cpu3
+1495991535000,1,20.0803212851,large-w-l-0.novalocal,cpu2
+1495991535000,2,21.8,large-w-l-0.novalocal,cpu1
+1495991535000,3,20.8416833667,large-w-l-0.novalocal,cpu0
+1495991535000,4,0.6,large-w-l-0.novalocal,cpu5
+1495991535000,5,7.2,large-w-l-0.novalocal,cpu4
+1495991535000,6,0.596421471173,large-w-l-1.novalocal,cpu3
+1495991535000,7,0.0,large-w-l-1.novalocal,cpu2
+1495991535000,8,0.0,large-w-l-1.novalocal,cpu1
+1495991535000,9,1.8,large-w-l-1.novalocal,cpu0
+1495991535000,10,0.0,large-w-l-1.novalocal,cpu5
+1495991535000,11,0.0,large-w-l-1.novalocal,cpu4
+1495991535000,12,0.0,large-w-l-2.novalocal,cpu3
+1495991535000,13,0.0,large-w-l-2.novalocal,cpu2
+1495991535000,14,0.0,large-w-l-2.novalocal,cpu1
+1495991535000,15,0.60120240481,large-w-l-2.novalocal,cpu0
+1495991535000,16,0.0,large-w-l-2.novalocal,cpu5
+1495991535000,17,0.0,large-w-l-2.novalocal,cpu4
+1495991540000,0,6.8,large-w-l-0.novalocal,cpu3
+1495991540000,1,6.78642714571,large-w-l-0.novalocal,cpu2
+1495991540000,2,14.0280561122,large-w-l-0.novalocal,cpu1
+1495991540000,3,31.9919517103,large-w-l-0.novalocal,cpu0
+1495991540000,4,3.79241516966,large-w-l-0.novalocal,cpu5
+1495991540000,5,11.4457831325,large-w-l-0.novalocal,cpu4
+1495991540000,6,0.0,large-w-l-1.novalocal,cpu3
+1495991540000,7,0.0,large-w-l-1.novalocal,cpu2
+1495991540000,8,0.0,large-w-l-1.novalocal,cpu1
+1495991540000,9,0.0,large-w-l-1.novalocal,cpu0
+1495991540000,10,0.0,large-w-l-1.novalocal,cpu5
+1495991540000,11,0.0,large-w-l-1.novalocal,cpu4
+1495991540000,12,0.0,large-w-l-2.novalocal,cpu3
+1495991540000,13,0.0,large-w-l-2.novalocal,cpu2
+1495991540000,14,0.0,large-w-l-2.novalocal,cpu1
+1495991540000,15,0.4,large-w-l-2.novalocal,cpu0
+1495991540000,16,0.0,large-w-l-2.novalocal,cpu5
+1495991540000,17,0.0,large-w-l-2.novalocal,cpu4
+1495991545000,0,73.5887096774,large-w-l-0.novalocal,cpu3
+1495991545000,1,85.9437751004,large-w-l-0.novalocal,cpu2
+1495991545000,2,73.8955823293,large-w-l-0.novalocal,cpu1
+1495991545000,3,86.8525896414,large-w-l-0.novalocal,cpu0
+1495991545000,4,84.1365461847,large-w-l-0.novalocal,cpu5
+1495991545000,5,73.2931726908,large-w-l-0.novalocal,cpu4
+1495991545000,6,0.0,large-w-l-1.novalocal,cpu3
+1495991545000,7,0.0,large-w-l-1.novalocal,cpu2
+1495991545000,8,0.0,large-w-l-1.novalocal,cpu1
+1495991545000,9,0.400801603206,large-w-l-1.novalocal,cpu0
+1495991545000,10,0.0,large-w-l-1.novalocal,cpu5
+1495991545000,11,0.0,large-w-l-1.novalocal,cpu4
+1495991545000,12,0.0,large-w-l-2.novalocal,cpu3
+1495991545000,13,0.0,large-w-l-2.novalocal,cpu2
+1495991545000,14,0.0,large-w-l-2.novalocal,cpu1
+1495991545000,15,0.4,large-w-l-2.novalocal,cpu0
+1495991545000,16,0.0,large-w-l-2.novalocal,cpu5
+1495991545000,17,0.0,large-w-l-2.novalocal,cpu4
+1495991550000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991550000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991550000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991550000,3,99.8,large-w-l-0.novalocal,cpu0
+1495991550000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991550000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991550000,6,0.0,large-w-l-1.novalocal,cpu3
+1495991550000,7,0.199600798403,large-w-l-1.novalocal,cpu2
+1495991550000,8,0.0,large-w-l-1.novalocal,cpu1
+1495991550000,9,0.6,large-w-l-1.novalocal,cpu0
+1495991550000,10,0.199600798403,large-w-l-1.novalocal,cpu5
+1495991550000,11,0.0,large-w-l-1.novalocal,cpu4
+1495991550000,12,0.0,large-w-l-2.novalocal,cpu3
+1495991550000,13,0.199600798403,large-w-l-2.novalocal,cpu2
+1495991550000,14,0.0,large-w-l-2.novalocal,cpu1
+1495991550000,15,0.801603206413,large-w-l-2.novalocal,cpu0
+1495991550000,16,0.398406374502,large-w-l-2.novalocal,cpu5
+1495991550000,17,0.0,large-w-l-2.novalocal,cpu4
+1495991555000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991555000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991555000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991555000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991555000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991555000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991555000,6,5.02008032129,large-w-l-1.novalocal,cpu3
+1495991555000,7,1.60965794769,large-w-l-1.novalocal,cpu2
+1495991555000,8,5.36779324056,large-w-l-1.novalocal,cpu1
+1495991555000,9,8.21643286573,large-w-l-1.novalocal,cpu0
+1495991555000,10,9.2,large-w-l-1.novalocal,cpu5
+1495991555000,11,21.3147410359,large-w-l-1.novalocal,cpu4
+1495991555000,12,0.0,large-w-l-2.novalocal,cpu3
+1495991555000,13,0.0,large-w-l-2.novalocal,cpu2
+1495991555000,14,0.0,large-w-l-2.novalocal,cpu1
+1495991555000,15,0.0,large-w-l-2.novalocal,cpu0
+1495991555000,16,0.0,large-w-l-2.novalocal,cpu5
+1495991555000,17,0.199600798403,large-w-l-2.novalocal,cpu4
+1495991560000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991560000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991560000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991560000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991560000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991560000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991560000,6,39.879759519,large-w-l-1.novalocal,cpu3
+1495991560000,7,70.1612903226,large-w-l-1.novalocal,cpu2
+1495991560000,8,78.8732394366,large-w-l-1.novalocal,cpu1
+1495991560000,9,32.7967806841,large-w-l-1.novalocal,cpu0
+1495991560000,10,24.0963855422,large-w-l-1.novalocal,cpu5
+1495991560000,11,57.1717171717,large-w-l-1.novalocal,cpu4
+1495991560000,12,0.0,large-w-l-2.novalocal,cpu3
+1495991560000,13,0.0,large-w-l-2.novalocal,cpu2
+1495991560000,14,0.199600798403,large-w-l-2.novalocal,cpu1
+1495991560000,15,0.4,large-w-l-2.novalocal,cpu0
+1495991560000,16,0.0,large-w-l-2.novalocal,cpu5
+1495991560000,17,0.0,large-w-l-2.novalocal,cpu4
+1495991565000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991565000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991565000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991565000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991565000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991565000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991565000,6,54.2,large-w-l-1.novalocal,cpu3
+1495991565000,7,8.41683366733,large-w-l-1.novalocal,cpu2
+1495991565000,8,12.8256513026,large-w-l-1.novalocal,cpu1
+1495991565000,9,34.2,large-w-l-1.novalocal,cpu0
+1495991565000,10,49.1017964072,large-w-l-1.novalocal,cpu5
+1495991565000,11,65.5378486056,large-w-l-1.novalocal,cpu4
+1495991565000,12,0.0,large-w-l-2.novalocal,cpu3
+1495991565000,13,0.0,large-w-l-2.novalocal,cpu2
+1495991565000,14,0.0,large-w-l-2.novalocal,cpu1
+1495991565000,15,1.00200400802,large-w-l-2.novalocal,cpu0
+1495991565000,16,0.199600798403,large-w-l-2.novalocal,cpu5
+1495991565000,17,0.2,large-w-l-2.novalocal,cpu4
+1495991570000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991570000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991570000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991570000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991570000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991570000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991570000,6,11.4457831325,large-w-l-1.novalocal,cpu3
+1495991570000,7,27.0,large-w-l-1.novalocal,cpu2
+1495991570000,8,30.2605210421,large-w-l-1.novalocal,cpu1
+1495991570000,9,32.2709163347,large-w-l-1.novalocal,cpu0
+1495991570000,10,15.0,large-w-l-1.novalocal,cpu5
+1495991570000,11,22.6452905812,large-w-l-1.novalocal,cpu4
+1495991570000,12,20.6827309237,large-w-l-2.novalocal,cpu3
+1495991570000,13,4.8,large-w-l-2.novalocal,cpu2
+1495991570000,14,7.01402805611,large-w-l-2.novalocal,cpu1
+1495991570000,15,1.80360721443,large-w-l-2.novalocal,cpu0
+1495991570000,16,8.6,large-w-l-2.novalocal,cpu5
+1495991570000,17,9.41883767535,large-w-l-2.novalocal,cpu4
+1495991575000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991575000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991575000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991575000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991575000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991575000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991575000,6,80.0804828974,large-w-l-1.novalocal,cpu3
+1495991575000,7,85.0806451613,large-w-l-1.novalocal,cpu2
+1495991575000,8,81.5789473684,large-w-l-1.novalocal,cpu1
+1495991575000,9,82.5557809331,large-w-l-1.novalocal,cpu0
+1495991575000,10,75.7085020243,large-w-l-1.novalocal,cpu5
+1495991575000,11,71.1693548387,large-w-l-1.novalocal,cpu4
+1495991575000,12,71.9758064516,large-w-l-2.novalocal,cpu3
+1495991575000,13,73.6842105263,large-w-l-2.novalocal,cpu2
+1495991575000,14,70.1825557809,large-w-l-2.novalocal,cpu1
+1495991575000,15,75.3012048193,large-w-l-2.novalocal,cpu0
+1495991575000,16,58.4521384929,large-w-l-2.novalocal,cpu5
+1495991575000,17,80.9236947791,large-w-l-2.novalocal,cpu4
+1495991580000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991580000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991580000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991580000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991580000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991580000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991580000,6,70.2213279678,large-w-l-1.novalocal,cpu3
+1495991580000,7,88.1526104418,large-w-l-1.novalocal,cpu2
+1495991580000,8,75.5020080321,large-w-l-1.novalocal,cpu1
+1495991580000,9,66.9338677355,large-w-l-1.novalocal,cpu0
+1495991580000,10,66.5987780041,large-w-l-1.novalocal,cpu5
+1495991580000,11,55.8232931727,large-w-l-1.novalocal,cpu4
+1495991580000,12,70.5410821643,large-w-l-2.novalocal,cpu3
+1495991580000,13,75.1004016064,large-w-l-2.novalocal,cpu2
+1495991580000,14,67.2,large-w-l-2.novalocal,cpu1
+1495991580000,15,69.9596774194,large-w-l-2.novalocal,cpu0
+1495991580000,16,79.595959596,large-w-l-2.novalocal,cpu5
+1495991580000,17,70.0803212851,large-w-l-2.novalocal,cpu4
+1495991585000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991585000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991585000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991585000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991585000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991585000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991585000,6,39.6,large-w-l-1.novalocal,cpu3
+1495991585000,7,41.8511066398,large-w-l-1.novalocal,cpu2
+1495991585000,8,28.4,large-w-l-1.novalocal,cpu1
+1495991585000,9,28.1124497992,large-w-l-1.novalocal,cpu0
+1495991585000,10,4.4,large-w-l-1.novalocal,cpu5
+1495991585000,11,24.248496994,large-w-l-1.novalocal,cpu4
+1495991585000,12,5.01002004008,large-w-l-2.novalocal,cpu3
+1495991585000,13,2.8,large-w-l-2.novalocal,cpu2
+1495991585000,14,1.8,large-w-l-2.novalocal,cpu1
+1495991585000,15,4.22535211268,large-w-l-2.novalocal,cpu0
+1495991585000,16,4.00801603206,large-w-l-2.novalocal,cpu5
+1495991585000,17,3.4,large-w-l-2.novalocal,cpu4
+1495991590000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991590000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991590000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991590000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991590000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991590000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991590000,6,61.8,large-w-l-1.novalocal,cpu3
+1495991590000,7,19.0380761523,large-w-l-1.novalocal,cpu2
+1495991590000,8,15.8316633267,large-w-l-1.novalocal,cpu1
+1495991590000,9,36.6733466934,large-w-l-1.novalocal,cpu0
+1495991590000,10,19.0,large-w-l-1.novalocal,cpu5
+1495991590000,11,34.0681362725,large-w-l-1.novalocal,cpu4
+1495991590000,12,6.6,large-w-l-2.novalocal,cpu3
+1495991590000,13,2.80561122244,large-w-l-2.novalocal,cpu2
+1495991590000,14,4.0,large-w-l-2.novalocal,cpu1
+1495991590000,15,5.6,large-w-l-2.novalocal,cpu0
+1495991590000,16,0.0,large-w-l-2.novalocal,cpu5
+1495991590000,17,2.61044176707,large-w-l-2.novalocal,cpu4
+1495991595000,0,100.0,large-w-l-0.novalocal,cpu3
+1495991595000,1,100.0,large-w-l-0.novalocal,cpu2
+1495991595000,2,100.0,large-w-l-0.novalocal,cpu1
+1495991595000,3,100.0,large-w-l-0.novalocal,cpu0
+1495991595000,4,100.0,large-w-l-0.novalocal,cpu5
+1495991595000,5,100.0,large-w-l-0.novalocal,cpu4
+1495991595000,6,10.1593625498,large-w-l-1.novalocal,cpu3
+1495991595000,7,4.0404040404,large-w-l-1.novalocal,cpu2
+1495991595000,8,25.4509018036,large-w-l-1.novalocal,cpu1
+1495991595000,9,8.23293172691,large-w-l-1.novalocal,cpu0
+1495991595000,10,1.40280561122,large-w-l-1.novalocal,cpu5
+1495991595000,11,2.40480961924,large-w-l-1.novalocal,cpu4
+1495991595000,12,3.40681362725,large-w-l-2.novalocal,cpu3
+1495991595000,13,1.60642570281,large-w-l-2.novalocal,cpu2
+1495991595000,14,2.20440881764,large-w-l-2.novalocal,cpu1
+1495991595000,15,4.81927710843,large-w-l-2.novalocal,cpu0
+1495991595000,16,1.39720558882,large-w-l-2.novalocal,cpu5
+1495991595000,17,6.6,large-w-l-2.novalocal,cpu4
+1495991600000,0,93.6,large-w-l-0.novalocal,cpu3
+1495991600000,1,99.6,large-w-l-0.novalocal,cpu2
+1495991600000,2,97.7955911824,large-w-l-0.novalocal,cpu1
+1495991600000,3,97.7955911824,large-w-l-0.novalocal,cpu0
+1495991600000,4,99.6,large-w-l-0.novalocal,cpu5
+1495991600000,5,94.4,large-w-l-0.novalocal,cpu4
+1495991600000,6,3.21285140562,large-w-l-1.novalocal,cpu3
+1495991600000,7,9.65794768612,large-w-l-1.novalocal,cpu2
+1495991600000,8,7.2,large-w-l-1.novalocal,cpu1
+1495991600000,9,13.2796780684,large-w-l-1.novalocal,cpu0
+1495991600000,10,1.80722891566,large-w-l-1.novalocal,cpu5
+1495991600000,11,3.2,large-w-l-1.novalocal,cpu4
+1495991600000,12,17.6,large-w-l-2.novalocal,cpu3
+1495991600000,13,14.0562248996,large-w-l-2.novalocal,cpu2
+1495991600000,14,14.4288577154,large-w-l-2.novalocal,cpu1
+1495991600000,15,17.0340681363,large-w-l-2.novalocal,cpu0
+1495991600000,16,12.625250501,large-w-l-2.novalocal,cpu5
+1495991600000,17,16.4658634538,large-w-l-2.novalocal,cpu4
+1495991605000,0,45.8917835671,large-w-l-0.novalocal,cpu3
+1495991605000,1,73.8,large-w-l-0.novalocal,cpu2
+1495991605000,2,52.3138832998,large-w-l-0.novalocal,cpu1
+1495991605000,3,63.1474103586,large-w-l-0.novalocal,cpu0
+1495991605000,4,43.9759036145,large-w-l-0.novalocal,cpu5
+1495991605000,5,53.0,large-w-l-0.novalocal,cpu4
+1495991605000,6,18.3266932271,large-w-l-1.novalocal,cpu3
+1495991605000,7,23.138832998,large-w-l-1.novalocal,cpu2
+1495991605000,8,19.2771084337,large-w-l-1.novalocal,cpu1
+1495991605000,9,26.0,large-w-l-1.novalocal,cpu0
+1495991605000,10,18.9620758483,large-w-l-1.novalocal,cpu5
+1495991605000,11,18.6372745491,large-w-l-1.novalocal,cpu4
+1495991605000,12,23.5412474849,large-w-l-2.novalocal,cpu3
+1495991605000,13,20.564516129,large-w-l-2.novalocal,cpu2
+1495991605000,14,22.6907630522,large-w-l-2.novalocal,cpu1
+1495991605000,15,24.0480961924,large-w-l-2.novalocal,cpu0
+1495991605000,16,22.4448897796,large-w-l-2.novalocal,cpu5
+1495991605000,17,24.7011952191,large-w-l-2.novalocal,cpu4</pre>
+    <pre id="csv_cpu_overall" style="display: none">x,idle,user,system,iowait,others
+1495991535000,95.9071627183,3.69255922589,0.255811366922,0.133344455567,0.0111222333445
+1495991540000,95.8278445087,3.88295505118,0.266985622802,0.0222148172831,0.0
+1495991545000,73.4049790583,25.5020080321,0.981704596162,0.0555296432021,0.0557786702365
+1495991550000,66.5556147803,32.3107628493,0.866944544473,0.0777370604794,0.188940765435
+1495991555000,63.8009589371,34.9874554503,1.14489670147,0.0222148172831,0.0444740938403
+1495991560000,49.8381828958,48.982207191,1.0350495282,0.0222074172774,0.122352967802
+1495991565000,54.1028536753,44.9638351494,0.711118543213,0.0888592987523,0.133333333333
+1495991570000,56.0379754236,42.6172831114,1.04473393154,0.0778593606265,0.222148172831
+1495991575000,16.3043426524,81.6255810571,1.85828726308,0.0448782676989,0.166910759702
+1495991580000,19.1163352833,78.9194054762,1.8751208092,0.0111744328975,0.0779639983539
+1495991585000,56.253480343,42.8567212384,0.811916694509,0.033411293017,0.0444704310057
+1495991590000,55.1067610218,44.1255403929,0.567290239982,0.16705274528,0.0333556000891
+1495991595000,62.671861251,36.4722083022,0.778111860315,0.0222444666889,0.0555741198145
+1495991600000,60.3206757081,38.6001400466,0.890016973296,0.0556855256468,0.133481746337
+1495991605000,67.0001107392,31.652868216,1.18005368116,0.0668077590162,0.100159604648</pre>
+    <pre id="csv_network_heatmap" style="display: none">x,y,value,hostname,adapterid
+1495991535000,0,79520.0,large-w-l-0.novalocal,eth0.recv
+1495991535000,1,3640.4,large-w-l-0.novalocal,eth0.send
+1495991535000,2,56943.0,large-w-l-1.novalocal,eth0.recv
+1495991535000,3,2233.8,large-w-l-1.novalocal,eth0.send
+1495991535000,4,78002.0,large-w-l-2.novalocal,eth0.recv
+1495991535000,5,78544.2,large-w-l-2.novalocal,eth0.send
+1495991540000,0,2974.0,large-w-l-0.novalocal,eth0.recv
+1495991540000,1,27511.2,large-w-l-0.novalocal,eth0.send
+1495991540000,2,364.0,large-w-l-1.novalocal,eth0.recv
+1495991540000,3,1131.6,large-w-l-1.novalocal,eth0.send
+1495991540000,4,24368.8,large-w-l-2.novalocal,eth0.recv
+1495991540000,5,25056.4,large-w-l-2.novalocal,eth0.send
+1495991545000,0,12818035.8,large-w-l-0.novalocal,eth0.recv
+1495991545000,1,26703.4,large-w-l-0.novalocal,eth0.send
+1495991545000,2,209.8,large-w-l-1.novalocal,eth0.recv
+1495991545000,3,841.8,large-w-l-1.novalocal,eth0.send
+1495991545000,4,191.8,large-w-l-2.novalocal,eth0.recv
+1495991545000,5,824.0,large-w-l-2.novalocal,eth0.send
+1495991550000,0,39511831.8,large-w-l-0.novalocal,eth0.recv
+1495991550000,1,71478.4,large-w-l-0.novalocal,eth0.send
+1495991550000,2,187.0,large-w-l-1.novalocal,eth0.recv
+1495991550000,3,732.2,large-w-l-1.novalocal,eth0.send
+1495991550000,4,170.2,large-w-l-2.novalocal,eth0.recv
+1495991550000,5,715.6,large-w-l-2.novalocal,eth0.send
+1495991555000,0,25078072.4,large-w-l-0.novalocal,eth0.recv
+1495991555000,1,68073.8,large-w-l-0.novalocal,eth0.send
+1495991555000,2,22375.8,large-w-l-1.novalocal,eth0.recv
+1495991555000,3,1789.0,large-w-l-1.novalocal,eth0.send
+1495991555000,4,191.8,large-w-l-2.novalocal,eth0.recv
+1495991555000,5,824.0,large-w-l-2.novalocal,eth0.send
+1495991560000,0,25480195.4,large-w-l-0.novalocal,eth0.recv
+1495991560000,1,49495.2,large-w-l-0.novalocal,eth0.send
+1495991560000,2,25671379.2,large-w-l-1.novalocal,eth0.recv
+1495991560000,3,45856.4,large-w-l-1.novalocal,eth0.send
+1495991560000,4,207.8,large-w-l-2.novalocal,eth0.recv
+1495991560000,5,824.0,large-w-l-2.novalocal,eth0.send
+1495991565000,0,38060287.8,large-w-l-0.novalocal,eth0.recv
+1495991565000,1,73991.2,large-w-l-0.novalocal,eth0.send
+1495991565000,2,3344395.0,large-w-l-1.novalocal,eth0.recv
+1495991565000,3,5386.0,large-w-l-1.novalocal,eth0.send
+1495991565000,4,170.2,large-w-l-2.novalocal,eth0.recv
+1495991565000,5,715.6,large-w-l-2.novalocal,eth0.send
+1495991570000,0,65244097.6,large-w-l-0.novalocal,eth0.recv
+1495991570000,1,163299.6,large-w-l-0.novalocal,eth0.send
+1495991570000,2,10804.8,large-w-l-1.novalocal,eth0.recv
+1495991570000,3,11328.6,large-w-l-1.novalocal,eth0.send
+1495991570000,4,2364.0,large-w-l-2.novalocal,eth0.recv
+1495991570000,5,1536.6,large-w-l-2.novalocal,eth0.send
+1495991575000,0,39670778.2,large-w-l-0.novalocal,eth0.recv
+1495991575000,1,90863.2,large-w-l-0.novalocal,eth0.send
+1495991575000,2,6016.0,large-w-l-1.novalocal,eth0.recv
+1495991575000,3,7146.2,large-w-l-1.novalocal,eth0.send
+1495991575000,4,8654.2,large-w-l-2.novalocal,eth0.recv
+1495991575000,5,5538.2,large-w-l-2.novalocal,eth0.send
+1495991580000,0,14073749.0,large-w-l-0.novalocal,eth0.recv
+1495991580000,1,36873.8,large-w-l-0.novalocal,eth0.send
+1495991580000,2,7097.4,large-w-l-1.novalocal,eth0.recv
+1495991580000,3,10982.2,large-w-l-1.novalocal,eth0.send
+1495991580000,4,8244.2,large-w-l-2.novalocal,eth0.recv
+1495991580000,5,8279.2,large-w-l-2.novalocal,eth0.send
+1495991585000,0,14644258.4,large-w-l-0.novalocal,eth0.recv
+1495991585000,1,33208.4,large-w-l-0.novalocal,eth0.send
+1495991585000,2,14515275.0,large-w-l-1.novalocal,eth0.recv
+1495991585000,3,36563.4,large-w-l-1.novalocal,eth0.send
+1495991585000,4,3574.0,large-w-l-2.novalocal,eth0.recv
+1495991585000,5,8699.0,large-w-l-2.novalocal,eth0.send
+1495991590000,0,6257956.8,large-w-l-0.novalocal,eth0.recv
+1495991590000,1,17753.6,large-w-l-0.novalocal,eth0.send
+1495991590000,2,2674.2,large-w-l-1.novalocal,eth0.recv
+1495991590000,3,9445.4,large-w-l-1.novalocal,eth0.send
+1495991590000,4,2695.6,large-w-l-2.novalocal,eth0.recv
+1495991590000,5,9349.2,large-w-l-2.novalocal,eth0.send
+1495991595000,0,17760045.4,large-w-l-0.novalocal,eth0.recv
+1495991595000,1,41975.0,large-w-l-0.novalocal,eth0.send
+1495991595000,2,9421.6,large-w-l-1.novalocal,eth0.recv
+1495991595000,3,21014.8,large-w-l-1.novalocal,eth0.send
+1495991595000,4,6647.8,large-w-l-2.novalocal,eth0.recv
+1495991595000,5,10408.2,large-w-l-2.novalocal,eth0.send
+1495991600000,0,15024921.8,large-w-l-0.novalocal,eth0.recv
+1495991600000,1,114285.4,large-w-l-0.novalocal,eth0.send
+1495991600000,2,46705.2,large-w-l-1.novalocal,eth0.recv
+1495991600000,3,29704.6,large-w-l-1.novalocal,eth0.send
+1495991600000,4,34701.0,large-w-l-2.novalocal,eth0.recv
+1495991600000,5,15670.2,large-w-l-2.novalocal,eth0.send
+1495991605000,0,8289586.6,large-w-l-0.novalocal,eth0.recv
+1495991605000,1,74321.4,large-w-l-0.novalocal,eth0.send
+1495991605000,2,34999.4,large-w-l-1.novalocal,eth0.recv
+1495991605000,3,38227.6,large-w-l-1.novalocal,eth0.send
+1495991605000,4,23107.8,large-w-l-2.novalocal,eth0.recv
+1495991605000,5,26065.8,large-w-l-2.novalocal,eth0.send</pre>
+    <pre id="csv_network_overall" style="display: none">x,recv_bytes,send_bytes,|recv_packets,send_packets,errors
+1495991535000,214465.0,84418.4,68.0,73.0,0.0
+1495991540000,27706.8,53699.2,34.4,40.6,0.0
+1495991545000,12818437.4,28369.2,1096.8,376.4,0.0
+1495991550000,39512189.0,72926.2,3066.2,1056.0,0.0
+1495991555000,25100640.0,70686.8,1802.6,701.0,0.0
+1495991560000,51151782.4,96175.6,3953.0,1382.2,0.0
+1495991565000,41404853.0,80092.8,3162.8,1149.4,0.0
+1495991570000,65257266.4,176164.8,5874.6,2308.8,0.0
+1495991575000,39685448.4,103547.6,3283.4,1305.6,0.0
+1495991580000,14089090.6,56135.2,1109.8,510.0,0.0
+1495991585000,29163107.4,78470.8,2241.8,873.6,0.0
+1495991590000,6263326.6,36548.2,489.2,254.8,0.0
+1495991595000,17776114.8,73398.0,1366.6,594.6,0.0
+1495991600000,15106328.0,159660.2,1430.0,744.6,0.0
+1495991605000,8347693.8,138614.8,932.8,656.2,0.0</pre>
+    <pre id="csv_diskio_heatmap" style="display: none">x,y,value,hostname,diskid
+1495991535000,0,5734.4,large-w-l-0.novalocal,vda
+1495991535000,1,88473.6,large-w-l-1.novalocal,vda
+1495991535000,2,6553.6,large-w-l-2.novalocal,vda
+1495991540000,0,120422.4,large-w-l-0.novalocal,vda
+1495991540000,1,0.0,large-w-l-1.novalocal,vda
+1495991540000,2,124518.4,large-w-l-2.novalocal,vda
+1495991545000,0,37683.2,large-w-l-0.novalocal,vda
+1495991545000,1,27852.8,large-w-l-1.novalocal,vda
+1495991545000,2,3276.8,large-w-l-2.novalocal,vda
+1495991550000,0,54067.2,large-w-l-0.novalocal,vda
+1495991550000,1,4096.0,large-w-l-1.novalocal,vda
+1495991550000,2,50790.4,large-w-l-2.novalocal,vda
+1495991555000,0,58982.4,large-w-l-0.novalocal,vda
+1495991555000,1,108134.4,large-w-l-1.novalocal,vda
+1495991555000,2,10649.6,large-w-l-2.novalocal,vda
+1495991560000,0,45875.2,large-w-l-0.novalocal,vda
+1495991560000,1,46694.4,large-w-l-1.novalocal,vda
+1495991560000,2,16384.0,large-w-l-2.novalocal,vda
+1495991565000,0,40140.8,large-w-l-0.novalocal,vda
+1495991565000,1,9830.4,large-w-l-1.novalocal,vda
+1495991565000,2,12288.0,large-w-l-2.novalocal,vda
+1495991570000,0,242483.2,large-w-l-0.novalocal,vda
+1495991570000,1,43417.6,large-w-l-1.novalocal,vda
+1495991570000,2,11468.8,large-w-l-2.novalocal,vda
+1495991575000,0,181043.2,large-w-l-0.novalocal,vda
+1495991575000,1,366182.4,large-w-l-1.novalocal,vda
+1495991575000,2,165478.4,large-w-l-2.novalocal,vda
+1495991580000,0,213811.2,large-w-l-0.novalocal,vda
+1495991580000,1,68812.8,large-w-l-1.novalocal,vda
+1495991580000,2,65536.0,large-w-l-2.novalocal,vda
+1495991585000,0,224460.8,large-w-l-0.novalocal,vda
+1495991585000,1,14745.6,large-w-l-1.novalocal,vda
+1495991585000,2,41779.2,large-w-l-2.novalocal,vda
+1495991590000,0,130252.8,large-w-l-0.novalocal,vda
+1495991590000,1,376012.8,large-w-l-1.novalocal,vda
+1495991590000,2,4096.0,large-w-l-2.novalocal,vda
+1495991595000,0,163020.8,large-w-l-0.novalocal,vda
+1495991595000,1,0.0,large-w-l-1.novalocal,vda
+1495991595000,2,5734.4,large-w-l-2.novalocal,vda
+1495991600000,0,108134.4,large-w-l-0.novalocal,vda
+1495991600000,1,27852.8,large-w-l-1.novalocal,vda
+1495991600000,2,7372.8,large-w-l-2.novalocal,vda
+1495991605000,0,154009.6,large-w-l-0.novalocal,vda
+1495991605000,1,199065.6,large-w-l-1.novalocal,vda
+1495991605000,2,32768.0,large-w-l-2.novalocal,vda</pre>
+    <pre id="csv_diskio_overall" style="display: none">x,read_bytes,write_bytes,|read_io,write_io
+1495991535000,0.0,100761.6,0.0,3.8
+1495991540000,0.0,244940.8,0.0,12.6
+1495991545000,0.0,68812.8,0.0,5.8
+1495991550000,0.0,108953.6,0.0,5.8
+1495991555000,0.0,177766.4,0.0,8.8
+1495991560000,0.0,108953.6,0.0,4.6
+1495991565000,0.0,62259.2,0.0,2.6
+1495991570000,0.0,297369.6,0.0,9.6
+1495991575000,0.0,712704.0,0.0,58.8
+1495991580000,0.0,348160.0,0.0,19.0
+1495991585000,0.0,280985.6,0.0,18.8
+1495991590000,0.0,510361.6,0.0,36.8
+1495991595000,0.0,168755.2,0.0,6.4
+1495991600000,0.0,143360.0,0.0,2.6
+1495991605000,0.0,385843.2,0.0,24.8</pre>
+    <pre id="csv_memory_heatmap" style="display: none">x,y,value,hostname
+1495991530000,0,2584988000,large-w-l-0.novalocal
+1495991530000,1,2701080000,large-w-l-1.novalocal
+1495991530000,2,2365388000,large-w-l-2.novalocal
+1495991535000,0,2713680000,large-w-l-0.novalocal
+1495991535000,1,2701716000,large-w-l-1.novalocal
+1495991535000,2,2365320000,large-w-l-2.novalocal
+1495991540000,0,2830384000,large-w-l-0.novalocal
+1495991540000,1,2701708000,large-w-l-1.novalocal
+1495991540000,2,2365288000,large-w-l-2.novalocal
+1495991545000,0,4232064000,large-w-l-0.novalocal
+1495991545000,1,2701620000,large-w-l-1.novalocal
+1495991545000,2,2365320000,large-w-l-2.novalocal
+1495991550000,0,5355488000,large-w-l-0.novalocal
+1495991550000,1,2700648000,large-w-l-1.novalocal
+1495991550000,2,2365288000,large-w-l-2.novalocal
+1495991555000,0,6377044000,large-w-l-0.novalocal
+1495991555000,1,2823820000,large-w-l-1.novalocal
+1495991555000,2,2365288000,large-w-l-2.novalocal
+1495991560000,0,7362224000,large-w-l-0.novalocal
+1495991560000,1,3538180000,large-w-l-1.novalocal
+1495991560000,2,2365256000,large-w-l-2.novalocal
+1495991565000,0,8378088000,large-w-l-0.novalocal
+1495991565000,1,3535052000,large-w-l-1.novalocal
+1495991565000,2,2364132000,large-w-l-2.novalocal
+1495991570000,0,8513384000,large-w-l-0.novalocal
+1495991570000,1,2819644000,large-w-l-1.novalocal
+1495991570000,2,2498808000,large-w-l-2.novalocal
+1495991575000,0,8853248000,large-w-l-0.novalocal
+1495991575000,1,3516248000,large-w-l-1.novalocal
+1495991575000,2,3172648000,large-w-l-2.novalocal
+1495991580000,0,9025048000,large-w-l-0.novalocal
+1495991580000,1,4185868000,large-w-l-1.novalocal
+1495991580000,2,3704076000,large-w-l-2.novalocal
+1495991585000,0,9256800000,large-w-l-0.novalocal
+1495991585000,1,4525924000,large-w-l-1.novalocal
+1495991585000,2,3715768000,large-w-l-2.novalocal
+1495991590000,0,9393864000,large-w-l-0.novalocal
+1495991590000,1,4557676000,large-w-l-1.novalocal
+1495991590000,2,3732488000,large-w-l-2.novalocal
+1495991595000,0,8222668000,large-w-l-0.novalocal
+1495991595000,1,4171044000,large-w-l-1.novalocal
+1495991595000,2,3742884000,large-w-l-2.novalocal
+1495991600000,0,5568608000,large-w-l-0.novalocal
+1495991600000,1,4228604000,large-w-l-1.novalocal
+1495991600000,2,3792284000,large-w-l-2.novalocal
+1495991605000,0,3032668000,large-w-l-0.novalocal
+1495991605000,1,4305212000,large-w-l-1.novalocal
+1495991605000,2,3889944000,large-w-l-2.novalocal</pre>
+    <pre id="csv_memory_overall" style="display: none">x,free,buffer_cache,used
+1495991530000,29264240,2151612,5499844
+1495991535000,29134980,2153204,5627512
+1495991540000,29018316,2153480,5743900
+1495991545000,27616692,2154456,7144548
+1495991550000,26494272,2155252,8266172
+1495991555000,25349544,2156308,9409844
+1495991560000,23650036,2157208,11108452
+1495991565000,22638424,2157380,12119892
+1495991570000,23083860,2157964,11673872
+1495991575000,21373552,2159900,13382244
+1495991580000,20000704,2161976,14753016
+1495991585000,19417204,2162496,15335996
+1495991590000,19231668,2162740,15521288
+1495991595000,20779100,2163224,13973372
+1495991600000,23326200,2161828,11427668
+1495991605000,25687872,2160692,9067132</pre>
+    <pre id="csv_procload_heatmap" style="display: none">x,y,value,hostname
+1495991530000,0,292,large-w-l-0.novalocal
+1495991530000,1,299,large-w-l-1.novalocal
+1495991530000,2,290,large-w-l-2.novalocal
+1495991535000,0,318,large-w-l-0.novalocal
+1495991535000,1,300,large-w-l-1.novalocal
+1495991535000,2,290,large-w-l-2.novalocal
+1495991540000,0,397,large-w-l-0.novalocal
+1495991540000,1,299,large-w-l-1.novalocal
+1495991540000,2,290,large-w-l-2.novalocal
+1495991545000,0,532,large-w-l-0.novalocal
+1495991545000,1,296,large-w-l-1.novalocal
+1495991545000,2,290,large-w-l-2.novalocal
+1495991550000,0,649,large-w-l-0.novalocal
+1495991550000,1,283,large-w-l-1.novalocal
+1495991550000,2,290,large-w-l-2.novalocal
+1495991555000,0,712,large-w-l-0.novalocal
+1495991555000,1,317,large-w-l-1.novalocal
+1495991555000,2,290,large-w-l-2.novalocal
+1495991560000,0,758,large-w-l-0.novalocal
+1495991560000,1,331,large-w-l-1.novalocal
+1495991560000,2,288,large-w-l-2.novalocal
+1495991565000,0,770,large-w-l-0.novalocal
+1495991565000,1,328,large-w-l-1.novalocal
+1495991565000,2,269,large-w-l-2.novalocal
+1495991570000,0,792,large-w-l-0.novalocal
+1495991570000,1,311,large-w-l-1.novalocal
+1495991570000,2,312,large-w-l-2.novalocal
+1495991575000,0,793,large-w-l-0.novalocal
+1495991575000,1,480,large-w-l-1.novalocal
+1495991575000,2,492,large-w-l-2.novalocal
+1495991580000,0,856,large-w-l-0.novalocal
+1495991580000,1,639,large-w-l-1.novalocal
+1495991580000,2,617,large-w-l-2.novalocal
+1495991585000,0,891,large-w-l-0.novalocal
+1495991585000,1,658,large-w-l-1.novalocal
+1495991585000,2,626,large-w-l-2.novalocal
+1495991590000,0,899,large-w-l-0.novalocal
+1495991590000,1,658,large-w-l-1.novalocal
+1495991590000,2,625,large-w-l-2.novalocal
+1495991595000,0,854,large-w-l-0.novalocal
+1495991595000,1,630,large-w-l-1.novalocal
+1495991595000,2,625,large-w-l-2.novalocal
+1495991600000,0,673,large-w-l-0.novalocal
+1495991600000,1,630,large-w-l-1.novalocal
+1495991600000,2,625,large-w-l-2.novalocal
+1495991605000,0,425,large-w-l-0.novalocal
+1495991605000,1,561,large-w-l-1.novalocal
+1495991605000,2,562,large-w-l-2.novalocal</pre>
+    <pre id="csv_procload_overall" style="display: none">x,load5,load10,load15,|running,procs
+1495991530000,11.97,9.85,9.87,3,881
+1495991535000,11.26,9.73,9.84,5,908
+1495991540000,10.36,9.57,9.79,4,986
+1495991545000,10.17,9.54,9.78,16,1118
+1495991550000,11.43,9.82,9.87,31,1222
+1495991555000,13.81,10.33,10.03,44,1319
+1495991560000,15.67,10.78,10.19,28,1377
+1495991565000,16.5,11.03,10.27,48,1367
+1495991570000,17.26,11.28,10.34,42,1415
+1495991575000,18.6,11.65,10.47,41,1765
+1495991580000,20.15,12.09,10.61,35,2112
+1495991585000,20.93,12.39,10.73,38,2175
+1495991590000,22.39,12.83,10.87,51,2182
+1495991595000,22.51,13.02,10.95,39,2109
+1495991600000,21.35,12.93,10.93,15,1928
+1495991605000,19.88,12.77,10.88,54,1548</pre>
+    <pre id="csv_events" style="display: none">x,event
+1495991533000,Start Job 1492752234356_16239
+1495991580000,Reduce start
+1495991609000,Finsih Job 1492752234356_16239</pre>
+
+</body>
+</html>
+

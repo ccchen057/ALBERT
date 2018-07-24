@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>System monitor report of HadoopPrepareTerasort</title>
+    <style TYPE="text/css">
+      .highcharts-tooltip>span {
+	background: rgba(255,255,255,0.85);
+	border: 1px solid silver;
+	border-radius: 3px;
+	box-shadow: 1px 1px 2px #888;
+	padding: 8px;
+	z-index: 2;
+      }
+    </style>
+    <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.2.min.js'></script>
+    <script src="http://code.highcharts.com/highcharts.js"></script>
+    <script src="http://code.highcharts.com/modules/data.js"></script>
+    <script src="http://code.highcharts.com/modules/heatmap.js"></script>
+    <script src="http://code.highcharts.com/modules/exporting.js"></script>
+
+    <script type='text/javascript'>
+    Object.defineProperty(Number.prototype,'fileSize',{value:function(a,b,c,d){
+	return (a=a?[1e3,'k','B']:[1024,'K','iB'],b=Math,c=b.log,
+		d=c(this)/c(a[0])|0,this/b.pow(a[0],d)).toFixed(2)
+	    +(d?(a[1]+'MGTPEZY')[--d]+a[2]:'Bytes');
+    },writable:false,enumerable:false});
+
+    function parse_events(){
+	var data = document.getElementById("csv_events").innerHTML;
+	var events=[];
+	var csv_header = [];
+	$.each(data.split('\n'), function(lineNo, line){
+	    var items = line.split(',');
+	    if (lineNo==0){
+		$.each(items, function(itemNo, item){
+		    csv_header.push(item);
+		});
+	    }else {
+		value = [];
+		$.each(items, function(itemNo, item){
+		    if (itemNo == 0){ // 0 -> timestamp
+			item = parseFloat(item);
+		    }
+//		    value[csv_header[itemNo]] = item;
+		    value.push(item);
+		});
+		events.push({color: 'red',
+			     dashStyle: 'longdashdot',
+			     value: value[0],
+			     label:{
+				 useHTML: true,
+				 text:value[1],
+				 align:'left'
+			     },
+			     width: 2});
+	    }
+	});
+	return events;
+    }
+
+function merge_options(obj1,obj2){
+    var obj3 = {};
+    for (var attrname in obj1) { obj3[attrname] = obj1[attrname]; }
+    for (var attrname in obj2) { obj3[attrname] = obj2[attrname]; }
+    return obj3;
+}
+
+function gen_overall_options(suffix, title, yAxis_desc, plot_options, plot_events, chart_type){
+    var data = document.getElementById("csv_"+suffix).innerHTML;
+    var csv_header = [];
+	
+    var series=[];
+    var yaxis=0;
+    $.each(data.split('\n'), function(lineNo, line){
+	var items = line.split(',');
+	if (lineNo==0){
+	    $.each(items, function(itemNo, item){
+		if (item[0]=='|'){ // new axis
+		    item = item.substring(1);
+		    yaxis +=1;
+		}
+		csv_header.push(item);
+		series.push({name:item, yAxis: yaxis, data:[],
+			     tooltip: yAxis_desc[yaxis].tooltip
+			    })
+	    });
+	} else {
+	    $.each(items, function(itemNo, item){
+		if (itemNo>0){
+		    series[itemNo].data.push([parseFloat(items[0]), parseFloat(item)])
+		}
+	    });
+	}
+    });
+    series.splice(0,1);
+    var options = {
+	chart: merge_options({
+	    renderTo: 'container_'+suffix,
+	},
+			     chart_type),
+	title: {
+	    text: title
+	},
+	// tooltip: {
+	// 	pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.percentage:.1f}%</b> ({point.y:,.0f})<br/>',
+        // shared: true
+        // },
+	
+	
+	plotOptions: plot_options,
+	
+	xAxis: {
+	    type: 'datetime',
+	    tickmarkPlacement: 'on',
+	    labels: {
+                align: 'left',
+                x: 5,
+                format: '{value:%M:%S}'
+	    },
+	    plotLines: plot_events,
+	    title: {
+                enabled: false
+	    }
+	},
+	yAxis: yAxis_desc,
+	series: series
+    };
+    //	console.log(options.series)
+
+    var newchart = new Highcharts.Chart(options);
+}
+
+function gen_heatmap_options(suffix, title, yAxis_desc, colorAxis_desc, series_desc){
+    
+    var data = document.getElementById("csv_"+suffix).innerHTML;
+    var csv_header = [];
+	
+    var series=[];
+    var yaxis=0;
+
+    var options = {
+	chart: {
+	    renderTo: 'container_'+suffix,
+	    type: 'heatmap',
+	    margin: [60, 10, 80, 70]
+	},
+	title: {
+	    text: title
+	},
+	tooltip: {
+	    backgroundColor: null,
+	    borderWidth: 0,
+	    distance: 10,
+	    shadow: false,
+	    useHTML: true,
+	    style: {
+                padding: 0,
+                color: 'black'
+	    }
+        },
+	xAxis: {
+	    type: 'datetime',
+	    labels: {
+                align: 'left',
+                x: 5,
+                format: '{value:%M:%S}'
+	    },
+	    showLastLabel: false,
+	    tickLength: 16
+	},
+	yAxis: yAxis_desc,
+	colorAxis: merge_options({
+	    stops: [
+                [0, '#3060cf'],
+                [0.5, '#fffbbc'],
+                [0.9, '#c4463a'],
+                [1, '#c4463a']
+	    ],
+	    startOnTick: false,
+	    endOnTick: false,
+	    labels: {
+                format: '{value}%'
+	    }
+	},
+				 colorAxis_desc),
+	series: [merge_options({
+	    name : 'CPU usage',
+	    borderWidth: 1,
+	    nullColor: '#EFEFEF',
+	    colsize: 5000.0, // 1s
+	    tooltip: {
+                headerFormat: 'CPU Usage<br/>',
+                pointFormat: '{point.x%Y-%m-%d %H:%M:%S}<br/>{point.hostname}.{point.coreid}<br/><b>{point.value:%.2f} %</b>'
+	    },
+	    turboThreshold: Number.MAX_VALUE,
+	    data: []
+	}, series_desc)]
+    };
+    
+    var data =  document.getElementById('csv_'+suffix).innerHTML;
+    // Split the lines
+    var lines = data.split('\n');
+    var csv_header = [];
+    var max_value = 0;
+    var min_value = -1;
+    $.each(lines, function(lineNo, line) {
+	var items = line.split(',');
+	    
+	// header line containes categories
+	if (lineNo == 0) {
+	    $.each(items, function(itemNo, item){
+		csv_header.push(item);
+	    });
+	} else { // the rest of the lines contain data with their name in the first position
+	    var series_data = {};
+	    $.each(items, function(itemNo, item) {
+		var value;
+		if (itemNo <= 2) {
+		    value = parseFloat(item);
+		    if (itemNo == 2){
+			if (max_value< value) max_value = value;		
+			if ((min_value<0) || ( min_value>value)) min_value = value;
+		    }
+		} else {
+		    value = item;
+		}
+		series_data[csv_header[itemNo]] = value;
+	    });
+	    options.series[0].data.push(series_data);
+	}
+    }  );
+    if (!("max" in colorAxis_desc)){
+	options.colorAxis.max = max_value;
+    }
+    if (!("min" in colorAxis_desc)){
+	options.colorAxis,min = min_value;
+    }
+
+
+    var newchart = new Highcharts.Chart(options);
+}
+
+    $(function() {
+
+	/**
+	 * This plugin extends Highcharts in two ways:
+	 * - Use HTML5 canvas instead of SVG for rendering of the heatmap squares. Canvas
+	 *   outperforms SVG when it comes to thousands of single shapes.
+	 * - Add a K-D-tree to find the nearest point on mouse move. Since we no longer have SVG shapes
+	 *   to capture mouseovers, we need another way of detecting hover points for the tooltip.
+	 */
+	(function (H) {
+            var wrap = H.wrap,
+            seriesTypes = H.seriesTypes;
+	    
+            /**
+             * Get the canvas context for a series
+             */
+            H.Series.prototype.getContext = function () {
+		var canvas;
+		if (!this.ctx) {
+                    canvas = document.createElement('canvas');
+                    canvas.setAttribute('width', this.chart.plotWidth);
+                    canvas.setAttribute('height', this.chart.plotHeight);
+                    canvas.style.position = 'absolute';
+                    canvas.style.left = this.group.translateX + 'px';
+                    canvas.style.top = this.group.translateY + 'px';
+                    canvas.style.zIndex = 0;
+                    canvas.style.cursor = 'crosshair';
+                    this.chart.container.appendChild(canvas);
+                    if (canvas.getContext) {
+			this.ctx = canvas.getContext('2d');
+                    }
+		}
+		return this.ctx;
+            }
+
+            /**
+             * Wrap the drawPoints method to draw the points in canvas instead of the slower SVG,
+             * that requires one shape each point.
+             */
+            H.wrap(H.seriesTypes.heatmap.prototype, 'drawPoints', function (proceed) {
+		
+		var ctx;
+		if (this.chart.renderer.forExport) {
+                    // Run SVG shapes
+                    proceed.call(this);
+		    
+		} else {
+		    
+                    if (ctx = this.getContext()) {
+			
+			// draw the columns
+			H.each(this.points, function (point) {
+                            var plotY = point.plotY,
+                            shapeArgs;
+			    
+                            if (plotY !== undefined && !isNaN(plotY) && point.y !== null) {
+				shapeArgs = point.shapeArgs;
+				pointAttr = (point.pointAttr && point.pointAttr['']) || point.series.pointAttribs(point);
+				
+				ctx.fillStyle = pointAttr.fill;
+				ctx.fillRect(shapeArgs.x, shapeArgs.y, shapeArgs.width, shapeArgs.height);
+                            }
+			});
+			
+                    } else {
+			this.chart.showLoading("Your browser doesn't support HTML5 canvas, <br>please use a modern browser");
+			
+			// Uncomment this to provide low-level (slow) support in oldIE. It will cause script errors on
+			// charts with more than a few thousand points.
+			//proceed.call(this);
+                    }
+		}
+            });
+	}(Highcharts));
+
+
+//	var chart_cpu_heatmap = new Highcharts.Chart(options);
+	var events = parse_events();
+
+	// generate heatmaps
+	// generate cpu heatmap
+	gen_heatmap_options("cpu_heatmap", "CPU usage heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function(){
+					return 'Core-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {min:0, max:100, labels:{format:'{value}%'}},
+			    {name : 'CPU Usage',
+			     tooltip:{
+				 headerFormat: 'CPU Usage<br/>',
+				 pointFormat: '{point.x:%Y-%m-%d %H:%M:%S}<br/>{point.hostname}.{point.coreid}<br/><b>{point.value:%.2f} %</b>'
+			     }});
+
+	// generate network throughputs heatmap
+	gen_heatmap_options("network_heatmap", "Network throughputs heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function(){
+					return  'Eth-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{format:'{value}'}},
+			    {name : 'Network throughputs',
+			     tooltip:{
+				 headerFormat: 'Network throughputs<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+"."+this.adapterid+'<br/><b>'+this.value.fileSize()+'</b>';}
+			     }}
+			    );
+
+	// generate disk io throughputs heatmap
+	gen_heatmap_options("diskio_heatmap", "Disk throughputs heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function (){
+					return 'Disk-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{format: '{value}'}},
+			    {name : 'DiskIO throughputs',
+			     tooltip:{
+				 headerFormat: 'DiskIO throughputs<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+"."+this.diskid+'<br/><b>'+this.value.fileSize()+'</b>';}
+			     }});
+
+	// generate memory usage heatmap
+	gen_heatmap_options("memory_heatmap", "Memory usage heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function () {
+					return 'Node-'+this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{formatter: function (){ return this.value.fileSize();}}},
+			    {name : 'Memory Usage',
+			     tooltip:{
+				 headerFormat: 'Memory Usage<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+'<br/><b>'+this.value.fileSize()+'</b>';}
+			     }});
+
+	// generate proc numbers heatmap
+	gen_heatmap_options("procload_heatmap", "Process numbers heatmap", 
+			    {
+				title: {
+				    text: null
+				},
+				labels: {
+				    formatter: function () {
+					return  'Node-'+ this.value;
+				    }
+				},
+				minPadding: 0,
+				maxPadding: 0,
+				startOnTick: false,
+				endOnTick: false,
+				tickWidth: 1,
+				min: 0,
+			    },
+			    {labels:{format:'{value}'}},
+			    {name : 'Process(/Thread) numbers',
+			     tooltip:{
+				 headerFormat: 'Process numbers<br/>',
+				 pointFormatter: function () {
+				     return Highcharts.dateFormat("%Y-%m-%d %H:%M:%S",this.x)+'<br/>'+this.hostname+'<br/><b>'+this.value+'</b>';}
+			     }}
+			   );
+	
+
+	// load cpu overall
+	gen_overall_options("cpu_overall", "Summarized CPU usage",
+			    [{	// yaxis
+				title: {
+				    text: 'Percent'
+				},
+				tooltip: {
+				    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.percentage:.1f}%</b>)<br/>',
+				},
+			    }], 
+			    {	// plot options
+				area: {
+				    stacking: 'percent',
+				    lineColor: '#ffffff',
+				    lineWidth: 1,
+				    marker: {
+					lineWidth: 1,
+					lineColor: '#ffffff'
+				    }
+				}
+			    },
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load network overall
+	gen_overall_options("network_overall", "Summarized Network throughputs & Packet-per-seconds", 
+			    [	// yaxis
+				{
+				    title:{
+					text: "Throughput Per Second"
+				    },
+				    tooltip: {
+					pointFormatter: function () {
+					    return '<span style="color:'+this.series.color+'">'+this.series.name+'</span>: <b>' + this.y.fileSize()+'</b>)<br/>';
+					}
+				    },
+				    labels: {
+					formatter: function() {
+					    return this.value.fileSize();
+					    }
+					}
+				},
+				{
+				    title:{
+					text: "Packets Per Second"
+				    },
+				    tooltip: {
+					pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.0f} packets</b>)<br/>',
+				    },
+				    opposite: true,
+				    reversed: true
+				},
+			    ],
+			    {},	// plot options
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load diskio overall
+	gen_overall_options("diskio_overall", "Summarized Disk throughputs & IOPS",
+			    [	// yaxis
+				{
+				    title:{
+					text: "Throughput Per Second"
+				    },
+				    tooltip: {
+					pointFormatter: function () {
+					    return '<span style="color:'+this.series.color +'">'+this.series.name+'</span>: <b>' + this.y.fileSize()+'</b>)<br/>';
+					},
+				    },
+				    labels: {
+					formatter: function() {
+					    return this.value.fileSize();
+					}
+				    }
+				},
+				{
+				    title:{
+					text: "Operations Per Second"
+				    },
+				    tooltip: {
+					pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.0f} IO</b>)<br/>',
+				    },
+				    opposite: true,
+				    reversed: true
+				}
+			    ],
+			    {},	// plot operations
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load memory overall
+	gen_overall_options("memory_overall", "Summarized Memory usage",
+			    [{	// yaxis
+				title: {
+				    text: 'Percent'
+				},
+				tooltip: {
+				    pointFormatter: function () {
+					return '<span style="color:'+this.series.color+'">'+this.series.name+'</span>: <b>' + (this.y*1024).fileSize()+'</b>)<br/>';
+				    }
+				},
+			    }], 
+			    {	// plot options
+				area: {
+				    stacking: 'percent',
+				    lineColor: '#ffffff',
+				    lineWidth: 1,
+				    marker: {
+					lineWidth: 1,
+					lineColor: '#ffffff'
+				    }
+				}
+			    },
+			    events,
+			    {	// chart type
+			    	type: 'area',
+			    }
+			   );
+
+	// load procload overall
+	gen_overall_options("procload_overall", "Summarized system load",
+			    [{	// yaxis for loads
+				title: {
+				    text: 'load'
+				},
+				tooltip: {
+				    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:0.2f}</b>)<br/>',
+				},
+			    },
+			     {	// yaxis for running & total process
+				 title: {
+				     text: 'process number'
+				 },
+				 tooltip: {
+				     pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.0f}</b>)<br/>',
+				 },
+				 opposite: true,
+			    }], 
+			    {	// plot options
+			    },
+			    events,
+			     {	// chart type
+			    }
+			   );
+    });
+</script>
+</head>
+<body>
+    <h1>Workload: HadoopPrepareTerasort</h1>
+    
+    <div id="container_cpu_heatmap" style="height: 800px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_cpu_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    
+    <div id="container_network_heatmap" style="height: 800px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_network_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+
+    <div id="container_diskio_heatmap" style="height: 800px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_diskio_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    
+    <div id="container_memory_heatmap" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_memory_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+
+    <div id="container_procload_heatmap" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+    <div id="container_procload_overall" style="height: 400px; max-width: 1000px; margin: 0 auto"></div>
+
+    <pre id="csv_cpu_heatmap" style="display: none">x,y,value,hostname,coreid
+1495899545000,0,1.6,large-w-l-0.novalocal,cpu3
+1495899545000,1,17.7419354839,large-w-l-0.novalocal,cpu2
+1495899545000,2,8.21643286573,large-w-l-0.novalocal,cpu1
+1495899545000,3,16.8,large-w-l-0.novalocal,cpu0
+1495899545000,4,21.9123505976,large-w-l-0.novalocal,cpu5
+1495899545000,5,20.2,large-w-l-0.novalocal,cpu4
+1495899545000,6,0.199600798403,large-w-l-1.novalocal,cpu3
+1495899545000,7,0.798403193613,large-w-l-1.novalocal,cpu2
+1495899545000,8,0.0,large-w-l-1.novalocal,cpu1
+1495899545000,9,0.400801603206,large-w-l-1.novalocal,cpu0
+1495899545000,10,0.0,large-w-l-1.novalocal,cpu5
+1495899545000,11,0.199600798403,large-w-l-1.novalocal,cpu4
+1495899545000,12,0.0,large-w-l-2.novalocal,cpu3
+1495899545000,13,0.0,large-w-l-2.novalocal,cpu2
+1495899545000,14,0.0,large-w-l-2.novalocal,cpu1
+1495899545000,15,1.59680638723,large-w-l-2.novalocal,cpu0
+1495899545000,16,0.0,large-w-l-2.novalocal,cpu5
+1495899545000,17,0.399201596806,large-w-l-2.novalocal,cpu4
+1495899550000,0,18.253968254,large-w-l-0.novalocal,cpu3
+1495899550000,1,22.7364185111,large-w-l-0.novalocal,cpu2
+1495899550000,2,35.8,large-w-l-0.novalocal,cpu1
+1495899550000,3,28.4569138277,large-w-l-0.novalocal,cpu0
+1495899550000,4,12.4497991968,large-w-l-0.novalocal,cpu5
+1495899550000,5,20.5179282869,large-w-l-0.novalocal,cpu4
+1495899550000,6,14.5418326693,large-w-l-1.novalocal,cpu3
+1495899550000,7,22.2,large-w-l-1.novalocal,cpu2
+1495899550000,8,3.00601202405,large-w-l-1.novalocal,cpu1
+1495899550000,9,9.0,large-w-l-1.novalocal,cpu0
+1495899550000,10,9.2,large-w-l-1.novalocal,cpu5
+1495899550000,11,11.2224448898,large-w-l-1.novalocal,cpu4
+1495899550000,12,3.40681362725,large-w-l-2.novalocal,cpu3
+1495899550000,13,12.7490039841,large-w-l-2.novalocal,cpu2
+1495899550000,14,11.623246493,large-w-l-2.novalocal,cpu1
+1495899550000,15,24.297188755,large-w-l-2.novalocal,cpu0
+1495899550000,16,9.83935742972,large-w-l-2.novalocal,cpu5
+1495899550000,17,6.1876247505,large-w-l-2.novalocal,cpu4
+1495899555000,0,43.1174089069,large-w-l-0.novalocal,cpu3
+1495899555000,1,49.5951417004,large-w-l-0.novalocal,cpu2
+1495899555000,2,53.0487804878,large-w-l-0.novalocal,cpu1
+1495899555000,3,62.4,large-w-l-0.novalocal,cpu0
+1495899555000,4,58.5170340681,large-w-l-0.novalocal,cpu5
+1495899555000,5,52.7162977867,large-w-l-0.novalocal,cpu4
+1495899555000,6,42.3935091278,large-w-l-1.novalocal,cpu3
+1495899555000,7,63.5245901639,large-w-l-1.novalocal,cpu2
+1495899555000,8,51.724137931,large-w-l-1.novalocal,cpu1
+1495899555000,9,50.2,large-w-l-1.novalocal,cpu0
+1495899555000,10,43.0861723447,large-w-l-1.novalocal,cpu5
+1495899555000,11,49.1967871486,large-w-l-1.novalocal,cpu4
+1495899555000,12,25.754527163,large-w-l-2.novalocal,cpu3
+1495899555000,13,46.812749004,large-w-l-2.novalocal,cpu2
+1495899555000,14,24.0404040404,large-w-l-2.novalocal,cpu1
+1495899555000,15,39.2,large-w-l-2.novalocal,cpu0
+1495899555000,16,25.6048387097,large-w-l-2.novalocal,cpu5
+1495899555000,17,37.2950819672,large-w-l-2.novalocal,cpu4</pre>
+    <pre id="csv_cpu_overall" style="display: none">x,idle,user,system,iowait,others
+1495899545000,95.0079867035,4.50293162723,0.366889044546,0.111088916047,0.0111037086387
+1495899550000,84.7527551885,14.3686324673,0.811878909457,0.0556149112934,0.0111185234601
+1495899555000,54.4966066331,43.3867383756,1.55680594159,0.0560413983233,0.503807651459</pre>
+    <pre id="csv_network_heatmap" style="display: none">x,y,value,hostname,adapterid
+1495899545000,0,80038.0,large-w-l-0.novalocal,eth0.recv
+1495899545000,1,134926.2,large-w-l-0.novalocal,eth0.send
+1495899545000,2,56478.6,large-w-l-1.novalocal,eth0.recv
+1495899545000,3,21652.4,large-w-l-1.novalocal,eth0.send
+1495899545000,4,76530.2,large-w-l-2.novalocal,eth0.recv
+1495899545000,5,2287.4,large-w-l-2.novalocal,eth0.send
+1495899550000,0,3263.0,large-w-l-0.novalocal,eth0.recv
+1495899550000,1,29155.2,large-w-l-0.novalocal,eth0.send
+1495899550000,2,22196.6,large-w-l-1.novalocal,eth0.recv
+1495899550000,3,1751.4,large-w-l-1.novalocal,eth0.send
+1495899550000,4,25949.8,large-w-l-2.novalocal,eth0.recv
+1495899550000,5,1792.8,large-w-l-2.novalocal,eth0.send
+1495899555000,0,176261.8,large-w-l-0.novalocal,eth0.recv
+1495899555000,1,24455614.2,large-w-l-0.novalocal,eth0.send
+1495899555000,2,211534.6,large-w-l-1.novalocal,eth0.recv
+1495899555000,3,24404917.4,large-w-l-1.novalocal,eth0.send
+1495899555000,4,164394.4,large-w-l-2.novalocal,eth0.recv
+1495899555000,5,16295130.8,large-w-l-2.novalocal,eth0.send</pre>
+    <pre id="csv_network_overall" style="display: none">x,recv_bytes,send_bytes,|recv_packets,send_packets,errors
+1495899545000,213046.8,158866.0,72.6,81.6,0.0
+1495899550000,51409.4,32699.4,45.0,52.8,0.0
+1495899555000,552190.8,65155662.4,6990.6,7044.4,0.0</pre>
+    <pre id="csv_diskio_heatmap" style="display: none">x,y,value,hostname,diskid
+1495899545000,0,8192.0,large-w-l-0.novalocal,vda
+1495899545000,1,9830.4,large-w-l-1.novalocal,vda
+1495899545000,2,107315.2,large-w-l-2.novalocal,vda
+1495899550000,0,58163.2,large-w-l-0.novalocal,vda
+1495899550000,1,49152.0,large-w-l-1.novalocal,vda
+1495899550000,2,18022.4,large-w-l-2.novalocal,vda
+1495899555000,0,56524.8,large-w-l-0.novalocal,vda
+1495899555000,1,51609.6,large-w-l-1.novalocal,vda
+1495899555000,2,52428.8,large-w-l-2.novalocal,vda</pre>
+    <pre id="csv_diskio_overall" style="display: none">x,read_bytes,write_bytes,|read_io,write_io
+1495899545000,819.2,124518.4,0.2,5.6
+1495899550000,0.0,125337.6,0.0,2.8
+1495899555000,0.0,160563.2,0.0,3.4</pre>
+    <pre id="csv_memory_heatmap" style="display: none">x,y,value,hostname
+1495899540000,0,2036944000,large-w-l-0.novalocal
+1495899540000,1,1954580000,large-w-l-1.novalocal
+1495899540000,2,2003096000,large-w-l-2.novalocal
+1495899545000,0,2208296000,large-w-l-0.novalocal
+1495899545000,1,1954240000,large-w-l-1.novalocal
+1495899545000,2,2002716000,large-w-l-2.novalocal
+1495899550000,0,2440908000,large-w-l-0.novalocal
+1495899550000,1,2120760000,large-w-l-1.novalocal
+1495899550000,2,2166340000,large-w-l-2.novalocal
+1495899555000,0,2297384000,large-w-l-0.novalocal
+1495899555000,1,1960628000,large-w-l-1.novalocal
+1495899555000,2,2003952000,large-w-l-2.novalocal</pre>
+    <pre id="csv_memory_overall" style="display: none">x,free,buffer_cache,used
+1495899540000,30921076,723636,5270984
+1495899545000,30750444,725264,5439988
+1495899550000,30187688,726648,6001360
+1495899555000,30653732,727244,5534720</pre>
+    <pre id="csv_procload_heatmap" style="display: none">x,y,value,hostname
+1495899540000,0,260,large-w-l-0.novalocal
+1495899540000,1,260,large-w-l-1.novalocal
+1495899540000,2,261,large-w-l-2.novalocal
+1495899545000,0,288,large-w-l-0.novalocal
+1495899545000,1,260,large-w-l-1.novalocal
+1495899545000,2,261,large-w-l-2.novalocal
+1495899550000,0,400,large-w-l-0.novalocal
+1495899550000,1,307,large-w-l-1.novalocal
+1495899550000,2,308,large-w-l-2.novalocal
+1495899555000,0,368,large-w-l-0.novalocal
+1495899555000,1,269,large-w-l-1.novalocal
+1495899555000,2,267,large-w-l-2.novalocal</pre>
+    <pre id="csv_procload_overall" style="display: none">x,load5,load10,load15,|running,procs
+1495899540000,0.32,0.92,2.22,4,781
+1495899545000,0.37,0.93,2.22,10,809
+1495899550000,0.74,0.99,2.24,16,1015
+1495899555000,1.09,1.05,2.25,7,904</pre>
+    <pre id="csv_events" style="display: none">x,event
+1495899545000,Start Job 1492752234356_14805
+1495899559000,Finsih Job 1492752234356_14805</pre>
+
+</body>
+</html>
+
